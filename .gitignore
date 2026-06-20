@@ -1,0 +1,3 @@
+*.bak
+*_backup/
+S3 copy/
