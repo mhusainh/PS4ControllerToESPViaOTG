@@ -23,6 +23,7 @@ class GamepadHost : public EspUsbHost {
   void onDisconnect(void) override {
     cleanup();
     Serial.println("Disconnected. Waiting...");
+    ESP.restart();
   }
 
   void onConfig(const uint8_t type, const uint8_t *p) override {

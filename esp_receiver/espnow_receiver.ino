@@ -52,6 +52,8 @@ struct EspNowReceiverState {
     uint32_t lastPacketRxMs = 0;
     uint32_t lastStatsPrintMs = 0;
 
+    uint8_t lastConnected = 0;       // Untuk deteksi reconnect (0→1)
+
     uint8_t staMac[6] = {0};
     EspNowRxStats stats;
 };
@@ -106,8 +108,18 @@ bool fetchPacket(ControlPacket &outPacket) {
     portENTER_CRITICAL(&espNowPacketMux);
     if (gEspNow.packetAvailable) {
         const uint32_t nowMs = millis();
-        const bool gapTooLong = (nowMs - gEspNow.lastPacketRxMs) > espNowLinkAliveMs;
+        const uint32_t gapMs = nowMs - gEspNow.lastPacketRxMs;
+        const bool gapTooLong = gapMs > espNowLinkAliveMs;
         gEspNow.lastPacketRxMs = nowMs;
+
+        // --- DETEKSI RECONNECT ---
+        // Saat controller reconnect: connected berubah dari 0 → 1.
+        // Reset sequence tracker agar paket pertama langsung diterima.
+        if (gEspNow.latestPacket.connected && !gEspNow.lastConnected) {
+            gEspNow.sequenceInitialized = false;
+            Serial.println("[FETCH] Reconnect terdeteksi (connected 0→1), sequence direset");
+        }
+        gEspNow.lastConnected = gEspNow.latestPacket.connected;
 
         if (gapTooLong) {
             // Gap terlalu lama — terima paket apapun (reset sequence)
